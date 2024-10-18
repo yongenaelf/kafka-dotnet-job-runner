@@ -11,8 +11,10 @@ public class BuildController : ControllerBase
     private readonly IAmazonS3 _s3Client;
     private readonly IConfiguration _configuration;
 
-    public BuildController()
+    public BuildController(IConfiguration configuration)
     {
+        _configuration = configuration;
+
         var config = new AmazonS3Config
         {
             ServiceURL = _configuration.GetRequiredSection("S3:Endpoint").Value,
