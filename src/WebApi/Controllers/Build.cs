@@ -1,4 +1,5 @@
 using Amazon.S3;
+using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 using Amazon.S3.Util;
 using Confluent.Kafka;
@@ -80,7 +81,60 @@ public class BuildController : ControllerBase
             producer.Flush(TimeSpan.FromSeconds(10));
         }
 
-        return Ok(new { keyName });
+        // for the next 30 seconds, check if the file output is in MinIO
+        var timeout = DateTime.UtcNow.AddSeconds(30);
+        var exists = false;
+        while (DateTime.UtcNow < timeout)
+        {
+            try
+            {
+                var metadata = await _s3Client.GetObjectMetadataAsync(_configuration.GetRequiredSection("S3:BucketName").Value, keyName + ".dll");
+                if (metadata != null)
+                {
+                    exists = true;
+                    break;
+                }
+            }
+            catch (AmazonS3Exception e) when (e.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                continue;
+            }
+        }
+
+        if (!exists)
+        {
+            return StatusCode(500, "File not built after 30s. Please try again later.");
+        }
+
+        // get the file from MinIO
+        var openStreamRequest = new TransferUtilityOpenStreamRequest
+        {
+            Key = keyName + ".dll",
+            BucketName = _configuration.GetRequiredSection("S3:BucketName").Value
+        };
+
+        // download to memorystream
+        using (var transferUtility = new TransferUtility(_s3Client))
+        {
+            var memoryStream = new MemoryStream();
+            using var responseStream = await transferUtility.OpenStreamAsync(openStreamRequest);
+            await responseStream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            // get the base64string
+            var base64String = Convert.ToBase64String(memoryStream.ToArray());
+
+            // delete the file from MinIO
+            var deleteRequest = new DeleteObjectRequest
+            {
+                BucketName = _configuration.GetRequiredSection("S3:BucketName").Value,
+                Key = keyName + ".dll"
+            };
+
+            await _s3Client.DeleteObjectAsync(deleteRequest);
+
+            return Ok(new { dll = base64String });
+        }
     }
 }
 

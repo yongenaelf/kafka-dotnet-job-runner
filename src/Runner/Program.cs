@@ -139,30 +139,22 @@ using (var consumer = new ConsumerBuilder<Ignore, string>(consumerConfig).Build(
                     continue;
                 }
 
-                var base64String = Convert.ToBase64String(File.ReadAllBytes(dllFile));
-
-                // produce a message to the Kafka topic
-                var producerConfig = new ProducerConfig
+                // save the file to MinIO
+                var uploadRequest = new TransferUtilityUploadRequest
                 {
-                    BootstrapServers = config.GetRequiredSection("Kafka:BootstrapServers").Value,
+                    FilePath = dllFile,
+                    Key = keyName + ".dll",
+                    BucketName = bucketName,
+                    CannedACL = S3CannedACL.PublicRead
                 };
 
-                using (var producer = new ProducerBuilder<string, string>(producerConfig).Build())
+                using (var transferUtility = new TransferUtility(_s3Client))
                 {
-                    var deliveryReport = await producer.ProduceAsync("build-complete", new Message<string, string> { Key = keyName, Value = base64String });
-                    Console.WriteLine($"Delivered '{deliveryReport.Value}' to '{deliveryReport.TopicPartitionOffset}'");
-                    // wait for up to 10 seconds for any inflight messages to be delivered.
-                    producer.Flush(TimeSpan.FromSeconds(10));
+                    await transferUtility.UploadAsync(uploadRequest);
                 }
 
-                Console.WriteLine($"Produced message '{keyName}' to topic 'build-complete'");
-
-                // delete the file
-
-                File.Delete(filePath);
-                Console.WriteLine($"Deleted file '{filePath}'");
-
-                Directory.Delete(extractPath, true);
+                Console.WriteLine($"Uploaded file '{dllFile}' to bucket '{bucketName}' with key '{keyName}.dll'");
+                CleanupFiles(filePath, extractPath);
             }
             catch (ConsumeException e)
             {
