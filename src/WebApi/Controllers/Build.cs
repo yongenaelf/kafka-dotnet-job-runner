@@ -9,16 +9,17 @@ using Microsoft.AspNetCore.Mvc;
 public class BuildController : ControllerBase
 {
     private readonly IAmazonS3 _s3Client;
+    private readonly IConfiguration _configuration;
 
     public BuildController()
     {
         var config = new AmazonS3Config
         {
-            ServiceURL = "http://localhost:9000",
+            ServiceURL = _configuration.GetRequiredSection("S3:Endpoint").Value,
             ForcePathStyle = true // Use path-style addressing
         };
 
-        _s3Client = new AmazonS3Client("minio", "minio123", config);
+        _s3Client = new AmazonS3Client(_configuration.GetRequiredSection("S3:AccessKey").Value, _configuration.GetRequiredSection("S3:Secret").Value, config);
     }
 
     [HttpPost]
@@ -35,7 +36,7 @@ public class BuildController : ControllerBase
 
         try
         {
-            var bucketName = "my-bucket";
+            var bucketName = _configuration.GetRequiredSection("S3:BucketName").Value;
             // Ensure the bucket exists
             if (!await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, bucketName))
             {
@@ -66,12 +67,12 @@ public class BuildController : ControllerBase
         // produce a message to the Kafka topic
         var config = new ProducerConfig
         {
-            BootstrapServers = "localhost:9092",
+            BootstrapServers = _configuration.GetRequiredSection("Kafka:BootstrapServers").Value,
         };
 
         using (var producer = new ProducerBuilder<Null, string>(config).Build())
         {
-            var deliveryReport = await producer.ProduceAsync("build", new Message<Null, string> { Value = keyName });
+            var deliveryReport = await producer.ProduceAsync(_configuration.GetRequiredSection("Kafka:Topic").Value, new Message<Null, string> { Value = keyName });
             Console.WriteLine($"Delivered '{deliveryReport.Value}' to '{deliveryReport.TopicPartitionOffset}'");
             // wait for up to 10 seconds for any inflight messages to be delivered.
             producer.Flush(TimeSpan.FromSeconds(10));

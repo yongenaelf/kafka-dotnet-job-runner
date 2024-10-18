@@ -4,10 +4,16 @@ using Amazon.S3.Util;
 using Confluent.Kafka;
 using System.Diagnostics;
 using System.IO.Compression;
+using Microsoft.Extensions.Configuration;
+
+// load from appsettings.json
+var config = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json")
+    .Build();
 
 var consumerConfig = new ConsumerConfig
 {
-    BootstrapServers = "localhost:9092",
+    BootstrapServers = config.GetRequiredSection("Kafka:BootstrapServers").Value,
     GroupId = "build-consumer-group",
     AutoOffsetReset = AutoOffsetReset.Latest
 };
@@ -33,17 +39,17 @@ using (var consumer = new ConsumerBuilder<Ignore, string>(consumerConfig).Build(
                 Console.WriteLine($"Consumed message '{consumeResult.Message.Value}' from topic '{consumeResult.Topic}', partition '{consumeResult.Partition}', offset '{consumeResult.Offset}'");
 
                 // download file from MinIO
-                var bucketName = "my-bucket";
+                var bucketName = config.GetRequiredSection("S3:BucketName").Value;
                 var keyName = consumeResult.Message.Value;
                 var filePath = Path.Combine(Path.GetTempPath(), keyName + ".zip");
 
                 var s3Config = new AmazonS3Config
                 {
-                    ServiceURL = "http://localhost:9000",
+                    ServiceURL = config.GetRequiredSection("S3:Endpoint").Value,
                     ForcePathStyle = true // Use path-style addressing
                 };
 
-                var _s3Client = new AmazonS3Client("minio", "minio123", s3Config);
+                var _s3Client = new AmazonS3Client(config.GetRequiredSection("S3:AccessKey").Value, config.GetRequiredSection("S3:Secret").Value, s3Config);
 
                 var downloadRequest = new TransferUtilityDownloadRequest
                 {
@@ -128,7 +134,7 @@ using (var consumer = new ConsumerBuilder<Ignore, string>(consumerConfig).Build(
                 // produce a message to the Kafka topic
                 var producerConfig = new ProducerConfig
                 {
-                    BootstrapServers = "localhost:9092",
+                    BootstrapServers = config.GetRequiredSection("Kafka:BootstrapServers").Value,
                 };
 
                 using (var producer = new ProducerBuilder<string, string>(producerConfig).Build())
