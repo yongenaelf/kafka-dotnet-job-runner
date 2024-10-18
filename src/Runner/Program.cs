@@ -1,15 +1,23 @@
 ﻿using Amazon.S3;
 using Amazon.S3.Transfer;
-using Amazon.S3.Util;
 using Confluent.Kafka;
 using System.Diagnostics;
 using System.IO.Compression;
 using Microsoft.Extensions.Configuration;
+using Amazon.S3.Model;
 
 // load from appsettings.json
 var config = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
     .Build();
+
+var s3Config = new AmazonS3Config
+{
+    ServiceURL = config.GetRequiredSection("S3:Endpoint").Value,
+    ForcePathStyle = true // Use path-style addressing
+};
+
+var _s3Client = new AmazonS3Client(config.GetRequiredSection("S3:AccessKey").Value, config.GetRequiredSection("S3:Secret").Value, s3Config);
 
 var consumerConfig = new ConsumerConfig
 {
@@ -43,14 +51,6 @@ using (var consumer = new ConsumerBuilder<Ignore, string>(consumerConfig).Build(
                 var keyName = consumeResult.Message.Value;
                 var filePath = Path.Combine(Path.GetTempPath(), keyName + ".zip");
 
-                var s3Config = new AmazonS3Config
-                {
-                    ServiceURL = config.GetRequiredSection("S3:Endpoint").Value,
-                    ForcePathStyle = true // Use path-style addressing
-                };
-
-                var _s3Client = new AmazonS3Client(config.GetRequiredSection("S3:AccessKey").Value, config.GetRequiredSection("S3:Secret").Value, s3Config);
-
                 var downloadRequest = new TransferUtilityDownloadRequest
                 {
                     Key = keyName,
@@ -64,6 +64,16 @@ using (var consumer = new ConsumerBuilder<Ignore, string>(consumerConfig).Build(
                 }
 
                 Console.WriteLine($"Downloaded file to '{filePath}'");
+
+                // delete from MinIO
+                var deleteRequest = new DeleteObjectRequest
+                {
+                    BucketName = bucketName,
+                    Key = keyName
+                };
+
+                await _s3Client.DeleteObjectAsync(deleteRequest);
+                Console.WriteLine($"Deleted file '{keyName}' from bucket '{bucketName}'");
 
                 // extract the file
                 var zipPath = filePath;
