@@ -1,8 +1,8 @@
 config:
   target: "https://kafka-job-runner.test.aelf.dev"
   phases:
-    - duration: 60
-      arrivalRate: 5
+    - duration: 10
+      arrivalRate: 1
       rampTo: 10
       name: up to 10 users
 scenarios:
