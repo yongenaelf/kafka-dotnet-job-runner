@@ -81,6 +81,9 @@ public class BuildController : ControllerBase
             producer.Flush(TimeSpan.FromSeconds(10));
         }
 
+        // wait for the file to be processed
+        await Task.Delay(6000);
+
         var timeoutValue = _configuration.GetRequiredSection("Timeout").Get<int>();
 
         // for the next X seconds, check if the file output is in MinIO
@@ -99,6 +102,8 @@ public class BuildController : ControllerBase
             }
             catch (AmazonS3Exception e) when (e.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
+                // wait for a second before checking again
+                await Task.Delay(1000);
                 continue;
             }
         }
