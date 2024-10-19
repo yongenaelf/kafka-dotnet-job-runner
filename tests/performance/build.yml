@@ -1,0 +1,9 @@
+config:
+  target: "https://kafka-job-runner.test.aelf.dev"
+scenarios:
+  - flow:
+      - post:
+          url: "/build"
+          formData:
+            file:
+              fromFile: "./contract/Archive.zip"
