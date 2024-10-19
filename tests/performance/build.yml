@@ -6,4 +6,4 @@ scenarios:
           url: "/api/build"
           formData:
             file:
-              fromFile: "./contract/Archive.zip"
+              fromFile: "./Archive.zip"
