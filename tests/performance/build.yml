@@ -3,7 +3,6 @@ config:
   phases:
     - duration: 10
       arrivalRate: 1
-      rampTo: 10
       name: up to 10 users
 scenarios:
   - flow:
