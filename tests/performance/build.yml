@@ -1,9 +1,11 @@
 config:
+  http:
+    timeout: 60000
   target: "https://kafka-job-runner.test.aelf.dev"
   phases:
     - duration: 10
       arrivalRate: 1
-      name: up to 10 users
+      name: up to 10 user
 scenarios:
   - flow:
       - post:
