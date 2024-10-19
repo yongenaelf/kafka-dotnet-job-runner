@@ -81,8 +81,10 @@ public class BuildController : ControllerBase
             producer.Flush(TimeSpan.FromSeconds(10));
         }
 
-        // for the next 30 seconds, check if the file output is in MinIO
-        var timeout = DateTime.UtcNow.AddSeconds(30);
+        var timeoutValue = _configuration.GetRequiredSection("Timeout").Get<int>();
+
+        // for the next X seconds, check if the file output is in MinIO
+        var timeout = DateTime.UtcNow.AddSeconds(timeoutValue);
         var exists = false;
         while (DateTime.UtcNow < timeout)
         {
@@ -103,7 +105,7 @@ public class BuildController : ControllerBase
 
         if (!exists)
         {
-            return StatusCode(500, "File not built after 30s. Please try again later.");
+            return StatusCode(500, "Operation timed out. Please try again later.");
         }
 
         // get the file from MinIO
