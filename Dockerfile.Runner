@@ -7,6 +7,7 @@ RUN dotnet publish -c Release -o out
 
 FROM base AS cache
 WORKDIR /app
+RUN dotnet new --install AElf.ContractTemplates 
 RUN dotnet new aelf -n HelloWorld
 RUN cd src/HelloWorld && dotnet restore
 RUN cd test/HelloWorld && dotnet restore
