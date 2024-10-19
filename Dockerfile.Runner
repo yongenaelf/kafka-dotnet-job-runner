@@ -9,8 +9,8 @@ FROM base AS cache
 WORKDIR /app
 RUN dotnet new --install AElf.ContractTemplates 
 RUN dotnet new aelf -n HelloWorld
-RUN cd src/HelloWorld && dotnet restore
-RUN cd test/HelloWorld && dotnet restore
+RUN dotnet restore src
+RUN dotnet restore test
 
 FROM base AS final
 COPY --from=mcr.microsoft.com/dotnet/sdk:8.0 /usr/share/dotnet /usr/share/dotnet
