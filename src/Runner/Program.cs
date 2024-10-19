@@ -23,7 +23,8 @@ var consumerConfig = new ConsumerConfig
 {
     BootstrapServers = config.GetRequiredSection("Kafka:BootstrapServers").Value,
     GroupId = "build-consumer-group",
-    AutoOffsetReset = AutoOffsetReset.Latest
+    AutoOffsetReset = AutoOffsetReset.Latest,
+    EnableAutoCommit = false
 };
 
 using (var consumer = new ConsumerBuilder<Ignore, string>(consumerConfig).Build())
@@ -44,6 +45,9 @@ using (var consumer = new ConsumerBuilder<Ignore, string>(consumerConfig).Build(
     {
         var consumeResult = consumer.Consume(cts.Token);
         Console.WriteLine($"Consumed message '{consumeResult.Message.Value}' from topic '{consumeResult.Topic}', partition '{consumeResult.Partition}', offset '{consumeResult.Offset}'");
+
+        // commit the message
+        consumer.Commit(consumeResult);
 
         // download file from MinIO
         var bucketName = config.GetRequiredSection("S3:BucketName").Value;
