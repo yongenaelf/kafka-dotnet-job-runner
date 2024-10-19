@@ -14,4 +14,6 @@ jobs:
       - name: Execute load tests
         uses: artilleryio/action-cli@v1
         with:
-          command: run tests/performance/build.yml
+          command: run tests/performance/build.yml --record
+        env:
+          ARTILLERY_CLOUD_API_KEY: ${{ secrets.ARTILLERY_CLOUD_KEY }} # cloud key set in gh action secrets
