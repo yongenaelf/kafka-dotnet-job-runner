@@ -14,7 +14,7 @@ RUN dotnet restore test
 
 FROM base AS final
 COPY --from=mcr.microsoft.com/dotnet/sdk:8.0 /usr/share/dotnet /usr/share/dotnet
-COPY --from=cache ~/.nuget/packages ~/.nuget/packages
+COPY --from=cache /root/.nuget/packages /root/.nuget/packages
 WORKDIR /app
 COPY --from=build /app/out .
 ENTRYPOINT ["dotnet", "Runner.dll"]
