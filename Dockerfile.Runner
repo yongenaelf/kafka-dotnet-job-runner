@@ -1,10 +1,19 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS base
+
+FROM base AS build
 WORKDIR /app
 COPY ./src/Runner .
 RUN dotnet publish -c Release -o out
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0
+FROM base AS cache
+WORKDIR /app
+RUN dotnet new aelf -n HelloWorld
+RUN cd src/HelloWorld && dotnet restore
+RUN cd test/HelloWorld && dotnet restore
+
+FROM base AS final
 COPY --from=mcr.microsoft.com/dotnet/sdk:8.0 /usr/share/dotnet /usr/share/dotnet
+COPY --from=cache ~/.nuget/packages ~/.nuget/packages
 WORKDIR /app
 COPY --from=build /app/out .
 ENTRYPOINT ["dotnet", "Runner.dll"]
