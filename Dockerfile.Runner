@@ -9,12 +9,15 @@ FROM base AS cache
 WORKDIR /app
 RUN dotnet new --install AElf.ContractTemplates 
 RUN dotnet new aelf -n HelloWorld
-RUN dotnet restore src
-RUN dotnet restore test
 
 FROM base AS final
-COPY --from=mcr.microsoft.com/dotnet/sdk:8.0 /usr/share/dotnet /usr/share/dotnet
-COPY --from=cache /root/.nuget/packages /root/.nuget/packages
 WORKDIR /app
+COPY --from=cache /app/src ./src
+COPY --from=cache /app/test ./test
+ENV DOTNET_CLI_USE_MSBUILD_SERVER=1
+
+RUN dotnet build ./src
+RUN dotnet test ./test
+COPY --from=mcr.microsoft.com/dotnet/sdk:8.0 /usr/share/dotnet /usr/share/dotnet
 COPY --from=build /app/out .
 ENTRYPOINT ["dotnet", "Runner.dll"]
